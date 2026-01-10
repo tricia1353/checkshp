@@ -1,4 +1,4 @@
-v 3
+v 1
 d checkshp: geometric validation, cleaning, reprojection, and spatial intersection statistical analysis of Shapefiles
 d
 d Distribution-Date: 20260110
@@ -8,3 +8,5 @@ d
 d Support: triciachen6754@126.com
 d
 f checkshp-0.1.0.jar
+f checkshp.ado
+f checkshp.sthlp
