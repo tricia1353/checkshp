@@ -1,0 +1,7 @@
+v 3
+d checkshp package 
+d Chen chunxia, Xiamen University
+d triciachen6754@126.com
+d
+p geometric validation, cleaning, reprojection, and spatial intersection statistical analysis of Shapefiles in Stata
+

@@ -1,0 +1,10 @@
+v 3
+d checkshp: geometric validation, cleaning, reprojection, and spatial intersection statistical analysis of Shapefiles
+d
+d Distribution-Date: 20260110
+d
+d Author: Chunxia Chen, School of Management, Xiamen University  
+d
+d Support: triciachen6754@126.com
+d
+f checkshp-0.1.0.jar

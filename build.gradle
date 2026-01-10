@@ -1,0 +1,168 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'com.example'
+version = '0.1.0'
+
+repositories {
+    mavenCentral()
+    // OSGeo仓库（GeoTools相关依赖）
+    maven {
+        url 'https://repo.osgeo.org/repository/release/'
+    }
+    // Eclipse Maven仓库（用于Eclipse ImageN）
+    maven {
+        url 'https://repo.eclipse.org/content/repositories/eclipse-releases/'
+    }
+    // GeoTools发布仓库（包含ImageN的发布版本）
+    maven {
+        url 'https://repo.geotools.org/geotools-releases/'
+    }
+    flatDir {
+        dirs 'C:/Users/17286/Documents/geotools-34.0/lib'
+    }
+}
+
+dependencies {
+    // GeoTools核心库（从本地lib目录）
+    implementation name: 'gt-api-34.0'
+    implementation name: 'gt-main-34.0'
+    implementation name: 'gt-shapefile-34.0'
+    implementation name: 'gt-referencing-34.0'
+    implementation name: 'gt-metadata-34.0'
+    implementation name: 'gt-geojson-core-34.0'
+    implementation name: 'gt-coverage-34.0'
+    implementation name: 'gt-coverage-api-34.0'
+    implementation name: 'gt-geotiff-34.0'
+    implementation name: 'gt-epsg-hsql-34.0'
+    
+    // gt-geotiff 需要的底层依赖（从 Maven 获取传递依赖）
+    // 本地 jar 文件不包含完整的传递依赖信息，导致缺少必要的类
+    // 1. Eclipse ImageN 模块（提供 ImageLayout 类）
+    implementation 'org.eclipse.imagen:imagen-core:0.9.0'
+    implementation 'org.eclipse.imagen:utilities:0.9.0'
+    implementation 'org.eclipse.imagen:iterators:0.9.0'
+    // 2. ImageIO-Ext 模块（提供 DatasetLayout、CogSourceSPIProvider 类等，用于 GeoTIFF 处理）
+    // 这些是 gt-geotiff 的传递依赖，本地 jar 不包含
+    implementation 'it.geosolutions.imageio-ext:imageio-ext-tiff:2.0.0'
+    implementation 'it.geosolutions.imageio-ext:imageio-ext-utilities:2.0.0'
+    // geocore 和 streams 模块（包含地理数据处理支持）
+    implementation 'it.geosolutions.imageio-ext:imageio-ext-geocore:2.0.0'
+    implementation 'it.geosolutions.imageio-ext:imageio-ext-streams:2.0.0'
+    // COG (Cloud Optimized GeoTIFF) 读取器模块（包含 CogSourceSPIProvider 类）
+    implementation 'it.geosolutions.imageio-ext:imageio-ext-cog-reader:2.0.0'
+    
+    // JTS几何库（从Maven Central，因为本地可能没有）
+    implementation 'org.locationtech.jts:jts-core:1.19.0'
+    
+    // Units of Measurement (UOM) 库（GeoTools引用系统所需）
+    implementation name: 'si-units-2.1'
+    implementation name: 'si-quantity-2.1'
+    implementation name: 'indriya-2.2'
+    implementation name: 'systems-common-2.1'
+    implementation name: 'unit-api-2.2'
+    implementation name: 'uom-lib-common-2.2'
+    
+    // 其他必要的依赖（从本地lib目录）
+    implementation name: 'commons-io-2.19.0'
+    implementation name: 'commons-lang3-3.18.0'
+    implementation name: 'guava-33.4.8-jre'
+    
+    // Jackson JSON库（GeoTools某些功能需要，用于消除警告）
+    // 从Maven Central获取，兼容GeoTools 34.0
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.19.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.0'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.19.0'
+    
+    // HSQLDB数据库驱动（gt-epsg-hsql需要，用于EPSG坐标参考系统数据库）
+    // 从Maven Central获取
+    implementation 'org.hsqldb:hsqldb:2.7.2'
+    
+    // EJML矩阵库（gt-referencing需要，用于坐标变换的矩阵运算）
+    // 从Maven Central获取，兼容GeoTools 34.0
+    implementation 'org.ejml:ejml-all:0.43.1'
+    
+    // JAI ImageIO库（gt-geotiff需要，用于GeoTIFF图像处理）
+    // 从Maven Central获取，兼容GeoTools 34.0
+    // 注意：使用 getCoordinateReferenceSystem() 方法可以直接获取 CRS 而无需读取完整图像数据
+    // 因此不需要 Eclipse ImageN 库（ImageLayout 类）
+    implementation 'com.github.jai-imageio:jai-imageio-core:1.4.0'
+    
+    // NetCDF 如需启用请另加：
+    // implementation name: 'gt-netcdf-34.0'
+}
+
+application {
+    mainClass = 'com.example.gcheckshp.gcheckshp'
+    applicationDefaultJvmArgs = []
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// 配置 Shadow 插件，创建包含所有依赖的 fat jar
+shadowJar {
+    archiveBaseName.set('checkshp')
+    archiveClassifier.set('')  // 移除 '-all' 后缀，使用主jar名称
+    archiveVersion.set(project.version.toString())
+    
+    manifest {
+        attributes 'Main-Class': 'com.example.gcheckshp.gcheckshp'
+    }
+    
+    // 合并服务文件（ServiceLoader需要，用于SPI机制，GeoTools使用）
+    mergeServiceFiles()
+    
+    // 排除签名文件（避免冲突）
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    
+    // 确保包含所有运行时依赖，包括 flatDir 中的本地 jar 文件
+    // Shadow 插件会自动处理所有 runtimeClasspath 中的依赖
+    
+    // 重定位类路径（如果需要避免冲突）
+    // relocate 'org.apache.commons', 'com.example.shaded.commons'
+}
+
+// 将原始 jar 添加后缀，避免与 shadow jar 冲突
+jar {
+    archiveClassifier.set('original')
+    enabled = true
+}
+
+// 确保 build 任务依赖 shadowJar，这样构建时会生成 fat jar
+tasks.named('assemble') {
+    dependsOn tasks.named('shadowJar')
+}
+
+// 自定义run任务，更好地处理带空格的参数
+task runIntersect(type: JavaExec) {
+    group = 'application'
+    description = '运行intersect模式'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.gcheckshp.gcheckshp'
+    
+    // 默认参数，可以通过命令行覆盖
+    // 例如: gradle runIntersect -Pshp1="D:\00to do list\city.shp" -Pshp2="D:\00to do list\福州.shp"
+    if (project.hasProperty('shp1') && project.hasProperty('shp2')) {
+        args = [project.property('shp1'), 'intersect', project.property('shp2')]
+        if (project.hasProperty('merge')) {
+            args.add('--merge-shp2')
+        }
+        if (project.hasProperty('groupField')) {
+            args.add('--group-field')
+            args.add(project.property('groupField'))
+        }
+    }
+}
