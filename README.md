@@ -25,8 +25,8 @@ A Java tool based on GeoTools and JTS for geometric validation, cleaning, reproj
   - UTM zone selection is based on the center point of both Shapefiles' boundaries
 - **Flexible Calculation Modes**:
   - **Standard Mode** (default): Uses STRtree spatial index to compute intersections feature by feature, suitable for large-scale data
-  - **Merge Mode** (`--merge-shp2`): Merges all features of shp2 before computing intersections, enabling deduplication of shp2 features
-- **Grouped Statistics**: Supports grouped statistics by specified field of shp2 (`--group-field`)
+  - **Merge Mode** : Merges all features of shp2 before computing intersections, enabling deduplication of shp2 features
+- **Grouped Statistics**: Supports grouped statistics by specified field of shp2
 - **Performance Optimization**:
   - Uses STRtree spatial index (recommended node capacity: 100) to accelerate large-scale data calculations
   - Envelope pre-check: Checks bounding box intersections first to avoid unnecessary geometric calculations
