@@ -136,6 +136,8 @@ public class gcheckshp {
         System.out.println(
                 "  Reproject mode: java -jar gcheckshp-core.jar <shpPath> <detail|summary> <true|false> <targetCRS>");
         System.out.println(
+                "  targetCRS can be: EPSG:xxxx, numeric EPSG code, .tif/.tiff file, or .shp file");
+        System.out.println(
                 "  Intersection stats: java -jar gcheckshp-core.jar <shp1> intersect <shp2> [--merge-shp2] [--group-field <fieldName>]");
     }
 
@@ -1010,7 +1012,7 @@ public class gcheckshp {
      * 
      * @param srcShp    输入shp路径
      * @param outShp    输出shp路径
-     * @param targetCRS EPSG:xxxx 或 tif/nc文件路径
+     * @param targetCRS EPSG:xxxx、纯数字EPSG、.tif/.tiff文件路径或.shp文件路径
      */
     public static void reprojectShapefile(String srcShp, String outShp, String targetCRS) throws Exception {
         CoordinateReferenceSystem targetCRSObj = resolveTargetCRS(targetCRS);
@@ -1236,13 +1238,18 @@ public class gcheckshp {
 
 
     /**
-     * 解析目标坐标系：支持EPSG:xxxx、纯数字EPSG、GeoTIFF自动识别。
+     * 解析目标坐标系：支持EPSG:xxxx、纯数字EPSG、GeoTIFF、Shapefile自动识别。
      */
     private static CoordinateReferenceSystem resolveTargetCRS(String targetCRS) throws Exception {
         if (targetCRS == null || targetCRS.trim().isEmpty()) {
             throw new IllegalArgumentException("targetCRS is empty");
         }
+        // 去除首尾可能的引号
         String trimmed = targetCRS.trim();
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || 
+            (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
+        }
         String lower = trimmed.toLowerCase();
 
         // EPSG:xxxx 或纯数字
@@ -1276,10 +1283,51 @@ public class gcheckshp {
             }
         }
 
-        // NetCDF 占位
-        if (lower.endsWith(".nc")) {
-            throw new UnsupportedOperationException("NetCDF support not implemented yet");
+        // Shapefile 自动解析
+        if (lower.endsWith(".shp")) {
+            File shp = new File(trimmed);
+            if (!shp.exists()) {
+                throw new IllegalArgumentException("Shapefile not found: " + shp.getAbsolutePath());
+            }
+            // 检查配套文件
+            String basePath = shp.getAbsolutePath();
+            int dot = basePath.lastIndexOf('.');
+            if (dot <= 0) {
+                throw new IllegalArgumentException("Shapefile must have an extension");
+            }
+            String prefix = basePath.substring(0, dot);
+            File shxFile = new File(prefix + ".shx");
+            File dbfFile = new File(prefix + ".dbf");
+            File prjFile = new File(prefix + ".prj");
+            if (!shxFile.exists()) {
+                throw new IllegalArgumentException("Missing companion file: " + shxFile.getName());
+            }
+            if (!dbfFile.exists()) {
+                throw new IllegalArgumentException("Missing companion file: " + dbfFile.getName());
+            }
+            if (!prjFile.exists()) {
+                throw new IllegalArgumentException("Missing companion file: " + prjFile.getName());
+            }
+            ShapefileDataStore store = null;
+            try {
+                Map<String, Object> params = new HashMap<>();
+                params.put("url", shp.toURI().toURL());
+                ShapefileDataStoreFactory factory = new ShapefileDataStoreFactory();
+                store = (ShapefileDataStore) factory.createDataStore(params);
+                store.setCharset(Charset.forName("UTF-8"));
+                CoordinateReferenceSystem crs = store.getSchema().getCoordinateReferenceSystem();
+                if (crs == null) {
+                    throw new IllegalArgumentException("Unable to read CRS from Shapefile (no .prj file?): " + shp.getAbsolutePath());
+                }
+                return crs;
+            } finally {
+                if (store != null) {
+                    store.dispose();
+                }
+            }
         }
+
+
 
         throw new IllegalArgumentException("Unsupported targetCRS: " + targetCRS);
     }
