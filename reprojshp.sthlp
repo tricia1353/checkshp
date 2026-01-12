@@ -74,5 +74,5 @@ Email: triciachen6754@126.com{p_end}
 {title:Also see}
 
 {psee}
-Online:  {help checkshp}, {help intershp}
+Online:  {help checkshp}, {help intershp}, {help areashp}
 {p_end}

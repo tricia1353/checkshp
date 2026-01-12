@@ -14,3 +14,15 @@ f reprojshp.ado
 f reprojshp.sthlp
 f intershp.ado
 f intershp.sthlp
+f areashp.ado
+f areashp.sthlp
+f example_checkshp.do
+f fujian.shp
+f fujian.shx
+f fujian.dbf
+f fujian.prj
+f fujian_building.shp
+f fujian_building.shx
+f fujian_building.dbf
+f fujian_building.prj
+

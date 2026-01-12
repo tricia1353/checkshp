@@ -107,12 +107,20 @@ public class gcheckshp {
         configureLogging();
         
         printArgs(args);
-        if (args == null || args.length < 3) {
+        if (args == null || args.length < 2) {
             printUsage();
             return;
         }
         if (isIntersectionMode(args)) {
             handleIntersectionMode(args);
+            return;
+        }
+        if (isAreaMode(args)) {
+            handleAreaMode(args);
+            return;
+        }
+        if (args.length < 3) {
+            printUsage();
             return;
         }
         handleCheckOrReprojectMode(args);
@@ -139,11 +147,35 @@ public class gcheckshp {
                 "  targetCRS can be: EPSG:xxxx, numeric EPSG code, .tif/.tiff file, or .shp file");
         System.out.println(
                 "  Intersection stats: java -jar gcheckshp-core.jar <shp1> intersect <shp2> [--merge-shp2] [--group-field <fieldName>]");
+        System.out.println(
+                "  Area calculation: java -jar gcheckshp-core.jar <shpPath> area [outputCSV]");
     }
 
     // Determine if intersection mode
     private static boolean isIntersectionMode(String[] args) {
         return args.length >= 3 && "intersect".equalsIgnoreCase(args[1]);
+    }
+
+    // Determine if area mode
+    private static boolean isAreaMode(String[] args) {
+        return args.length >= 2 && "area".equalsIgnoreCase(args[1]);
+    }
+
+    // Handle area calculation mode
+    private static void handleAreaMode(String[] args) {
+        String shpPath = args[0];
+        String outputCSV = args.length > 2 ? args[2] : null;
+        
+        File shpFile = new File(shpPath);
+        if (!shpFile.exists()) {
+            System.out.println("Shapefile does not exist: " + shpPath);
+            return;
+        }
+        if (!checkCompanionFiles(shpFile)) {
+            return;
+        }
+        
+        calculatePolygonAreas(shpPath, outputCSV);
     }
 
     // Handle intersection mode
@@ -1354,5 +1386,224 @@ public class gcheckshp {
         }
         // 替换不适合作为列名的字符
         return value.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("_{2,}", "_");
+    }
+
+    /**
+     * 计算shapefile中所有多边形的面积
+     * 
+     * @param shpPath  输入shapefile路径
+     * @param outputCSV 输出CSV文件路径（可选，如果为null则自动生成）
+     */
+    public static void calculatePolygonAreas(String shpPath, String outputCSV) {
+        ShapefileDataStore store = null;
+        try {
+            File shpFile = new File(shpPath);
+            if (!shpFile.exists()) {
+                System.out.println("Shapefile does not exist: " + shpPath);
+                return;
+            }
+            if (!checkCompanionFiles(shpFile)) {
+                return;
+            }
+            
+            Map<String, Object> params = new HashMap<>();
+            params.put("url", shpFile.toURI().toURL());
+            ShapefileDataStoreFactory factory = new ShapefileDataStoreFactory();
+            store = (ShapefileDataStore) factory.createDataStore(params);
+            store.setCharset(Charset.forName("UTF-8"));
+
+            SimpleFeatureSource featureSource = store.getFeatureSource();
+            SimpleFeatureCollection collection = featureSource.getFeatures();
+            SimpleFeatureType schema = collection.getSchema();
+            CoordinateReferenceSystem crs = schema.getCoordinateReferenceSystem();
+
+            // 确定用于面积计算的坐标系 - 必须使用投影坐标系以确保面积计算准确
+            CoordinateReferenceSystem areaCalculationCRS = null;
+            MathTransform transform = null;
+            String areaUnit = "unknown";
+            ReferencedEnvelope bounds = collection.getBounds();
+
+            if (crs == null) {
+                // 如果没有CRS信息，根据坐标范围推断是否为地理坐标系
+                if (bounds != null && !bounds.isEmpty()) {
+                    double minX = bounds.getMinX();
+                    double maxX = bounds.getMaxX();
+                    double minY = bounds.getMinY();
+                    double maxY = bounds.getMaxY();
+                    
+                    // 判断是否为地理坐标系（经度-180到180，纬度-90到90）
+                    boolean likelyGeographic = (minX >= -180 && maxX <= 180 && minY >= -90 && maxY <= 90);
+                    
+                    if (likelyGeographic) {
+                        System.out.println("Warning: Shapefile missing CRS, but coordinates suggest geographic CRS.");
+                        System.out.println("Converting to UTM projection for accurate area calculation.");
+                        // 假设为WGS84地理坐标系
+                        try {
+                            crs = CRS.decode("EPSG:4326", true);
+                        } catch (Exception e) {
+                            System.out.println("Error: Failed to create WGS84 CRS: " + e.getMessage());
+                            throw new RuntimeException("Cannot calculate area: shapefile missing CRS and cannot infer projection.", e);
+                        }
+                    } else {
+                        System.out.println("Error: Shapefile missing CRS and coordinates do not appear to be geographic.");
+                        System.out.println("Cannot determine appropriate projection for area calculation.");
+                        throw new RuntimeException("Cannot calculate area: shapefile missing CRS information.");
+                    }
+                } else {
+                    System.out.println("Error: Shapefile missing CRS and bounds are unavailable.");
+                    throw new RuntimeException("Cannot calculate area: shapefile missing CRS information.");
+                }
+            }
+
+            // 现在crs一定不为null，检查是否为地理坐标系
+            boolean isGeographic = isGeographicCRS(crs);
+            if (isGeographic) {
+                System.out.println("Detected geographic CRS. Converting to projected CRS for area calculation.");
+                System.out.println("  Original CRS: " + crs.getName());
+                if (bounds == null || bounds.isEmpty()) {
+                    bounds = collection.getBounds();
+                }
+                double centerLon = (bounds.getMinX() + bounds.getMaxX()) / 2.0;
+                double centerLat = (bounds.getMinY() + bounds.getMaxY()) / 2.0;
+                int utmZone = (int) Math.floor((centerLon + 180) / 6) + 1;
+                String utmCode = centerLat >= 0 ? "EPSG:326" + String.format("%02d", utmZone)
+                        : "EPSG:327" + String.format("%02d", utmZone);
+                try {
+                    areaCalculationCRS = CRS.decode(utmCode, true);
+                    System.out.println("  Using UTM CRS for area calculation: " + areaCalculationCRS.getName());
+                    transform = CRS.findMathTransform(crs, areaCalculationCRS, true);
+                    areaUnit = "square meters";
+                } catch (Exception e) {
+                    System.out.println("Error: Failed to create UTM projection: " + e.getMessage());
+                    throw new RuntimeException("Cannot calculate area: failed to convert to projected CRS.", e);
+                }
+            } else {
+                // 已经是投影坐标系，直接使用
+                areaCalculationCRS = crs;
+                try {
+                    CoordinateSystem cs = crs.getCoordinateSystem();
+                    if (cs != null && cs.getDimension() > 0) {
+                        CoordinateSystemAxis axis = cs.getAxis(0);
+                        if (axis != null) {
+                            String unit = axis.getUnit().toString();
+                            if (unit.toLowerCase().contains("metre") || unit.toLowerCase().contains("meter")) {
+                                areaUnit = "square meters";
+                            } else {
+                                areaUnit = unit + "²";
+                            }
+                        }
+                    }
+                    if ("unknown".equals(areaUnit)) {
+                        areaUnit = "square units";
+                    }
+                    System.out.println("Using existing projected CRS for area calculation: " + crs.getName());
+                    System.out.println("  Area unit: " + areaUnit);
+                } catch (Exception e) {
+                    areaUnit = "square units";
+                    System.out.println("Warning: Could not determine area unit from CRS, using 'square units'.");
+                }
+            }
+
+            // 获取所有非几何字段名
+            List<String> fieldNames = new ArrayList<>();
+            for (int i = 0; i < schema.getAttributeCount(); i++) {
+                String name = schema.getDescriptor(i).getLocalName();
+                if (!(schema.getDescriptor(i) instanceof GeometryDescriptor)) {
+                    fieldNames.add(name);
+                }
+            }
+
+            // 生成输出CSV文件名
+            File csvFile;
+            if (outputCSV != null && !outputCSV.trim().isEmpty()) {
+                csvFile = new File(outputCSV);
+            } else {
+                String csvFileName = shpFile.getName();
+                int dotIndex = csvFileName.lastIndexOf('.');
+                String baseName = dotIndex > 0 ? csvFileName.substring(0, dotIndex) : csvFileName;
+                csvFile = new File(shpFile.getParent(), baseName + "_area.csv");
+            }
+
+            // 计算面积并写入CSV
+            double totalArea = 0.0;
+            int featureCount = 0;
+            int polygonCount = 0;
+
+            try (PrintWriter writer = new PrintWriter(
+                    new java.io.BufferedWriter(new FileWriter(csvFile, false), CSV_BUFFER_SIZE));
+                    SimpleFeatureIterator iterator = collection.features()) {
+                
+                // 写入表头
+                StringBuilder header = new StringBuilder();
+                for (String field : fieldNames) {
+                    header.append(field).append(CSV_SEPARATOR);
+                }
+                header.append("Area");
+                writer.println(header.toString());
+
+                // 处理每个要素
+                while (iterator.hasNext()) {
+                    SimpleFeature feature = iterator.next();
+                    featureCount++;
+                    Object geomObj = feature.getDefaultGeometry();
+                    
+                    if (geomObj instanceof Geometry) {
+                        Geometry geom = (Geometry) geomObj;
+                        if (!geom.isEmpty() && geom.isValid()) {
+                            // 转换坐标系（如果需要）
+                            if (transform != null) {
+                                try {
+                                    geom = org.geotools.geometry.jts.JTS.transform(geom, transform);
+                                } catch (Exception e) {
+                                    logger.warning("Failed to transform geometry for feature " + feature.getID()
+                                            + ": " + e.getMessage());
+                                    continue;
+                                }
+                            }
+
+                            String geomType = geom.getGeometryType();
+                            if ("Polygon".equalsIgnoreCase(geomType) || "MultiPolygon".equalsIgnoreCase(geomType)) {
+                                double area = geom.getArea();
+                                totalArea += area;
+                                polygonCount++;
+
+                                // 写入CSV行
+                                StringBuilder line = new StringBuilder();
+                                for (String fieldName : fieldNames) {
+                                    Object val = feature.getAttribute(fieldName);
+                                    line.append(escapeCsv(val != null ? val.toString() : "")).append(CSV_SEPARATOR);
+                                }
+                                line.append(String.format(AREA_FORMAT, area));
+                                writer.println(line.toString());
+                            }
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println("Failed to write CSV file: " + e.getMessage());
+                e.printStackTrace();
+                return;
+            }
+
+            // 输出统计结果
+            System.out.println("=== Polygon Area Calculation ===");
+            System.out.println("Shapefile: " + shpFile.getAbsolutePath());
+            System.out.println("Total features: " + featureCount);
+            System.out.println("Polygon/MultiPolygon features: " + polygonCount);
+            System.out.println("--- Area Calculation Settings ---");
+            System.out.println("Coordinate System (CRS): "
+                    + (areaCalculationCRS != null ? areaCalculationCRS.getName().toString() : "unknown"));
+            System.out.println("Area Unit: " + areaUnit);
+            System.out.println("Total area: " + String.format("%.6f", totalArea) + " " + areaUnit);
+            System.out.println("CSV file saved to: " + csvFile.getAbsolutePath());
+
+        } catch (Exception e) {
+            System.out.println("Failed to calculate polygon areas: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (store != null) {
+                store.dispose();
+            }
+        }
     }
 }

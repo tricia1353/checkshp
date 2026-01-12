@@ -22,7 +22,14 @@ net install checkshp, from("https://raw.githubusercontent.com/tricia1353/checksh
   - GeoTIFF file path: Automatically reads coordinate system from .tif/.tiff files (uses `getCoordinateReferenceSystem()` method without reading complete image data)
   - **Output**: Generates new files with `_reproj` suffix while preserving original files
 
-### 3. Spatial Intersection Statistics Mode (Intersection Mode)
+### 3. Polygon Area Calculation Mode (Area Mode)
+- **Area Calculation**: Calculates the area of all polygon and multipolygon features in a Shapefile
+- **Automatic Coordinate System Conversion**:
+  - **Critical**: Area calculation requires a projected coordinate system for accuracy
+  - Automatically detects geographic coordinate systems (e.g., WGS84) and converts to appropriate UTM projection based on the center of the Shapefile
+  - If Shapefile uses a projected CRS, calculates areas directly in that coordinate system
+
+### 4. Spatial Intersection Statistics Mode (Intersection Mode)
 - **Intersection Calculation**: Computes spatial intersection areas and counts between two Shapefiles
 - **Smart Coordinate System Handling**:
   - Automatically detects geographic coordinate systems (e.g., WGS84) and converts to appropriate UTM projected coordinate systems for area calculation
@@ -40,12 +47,16 @@ net install checkshp, from("https://raw.githubusercontent.com/tricia1353/checksh
 
 ## Command Overview
 
-The toolkit exposes three commands that follow the workflow described above:
+The toolkit exposes four commands that follow the workflow described above:
 
 - **Geometric validation**
   - `checkshp` validates geometric validity of Shapefiles, detects invalid features, and optionally removes invalid features to generate cleaned Shapefiles with `_clean` suffix
 - **Reprojection**
   - `reprojshp` reprojects Shapefiles to a specified coordinate reference system (CRS) using EPSG codes, GeoTIFF files, or reference Shapefiles, and generates new files with `_reproj` suffix
+
+- **Polygon area calculation**
+  - `areashp` calculates the area of all polygon and multipolygon features in a Shapefile, automatically converting geographic coordinate systems to projected coordinate systems for accurate area calculation, and outputs results to a CSV file
+  
 - **Spatial intersection statistics**
   - `intershp` computes spatial intersection areas and counts between two Shapefiles, with support for merge mode and grouped statistics by specified fields
 
@@ -55,7 +66,9 @@ The following workflow demonstrates how the commands work together:
 
 1. Validate and clean Shapefiles with `checkshp` to detect and optionally remove invalid geometric features before spatial operations.
 2. Reproject Shapefiles to a common coordinate system using `reprojshp` when necessary, using EPSG codes or reference files (GeoTIFF or Shapefile).
-3. Compute spatial intersection statistics with `intershp` to analyze spatial relationships between Shapefiles, with support for merge mode and grouped statistics.
+3. Calculate polygon areas with `areashp` to compute accurate area measurements for polygon features, with automatic coordinate system conversion for geographic CRS.
+4. Compute spatial intersection statistics with `intershp` to analyze spatial relationships between Shapefiles, with support for merge mode and grouped statistics.
+
 
 ## Example
 
@@ -79,6 +92,12 @@ The following examples demonstrate common usage patterns:
   
   * Intersection with grouped statistics
   intershp "fujian.shp" with("fuzhou_building.shp"), group(Floor)
+  ```
+
+- Calculate polygon areas
+  ```stata
+  * Calculate areas (output to default CSV file: fujian_area.csv)
+  areashp "fujian.shp"
   ```
 
 ## Runtime Environment
