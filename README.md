@@ -57,6 +57,30 @@ The following workflow demonstrates how the commands work together:
 2. Reproject Shapefiles to a common coordinate system using `reprojshp` when necessary, using EPSG codes or reference files (GeoTIFF or Shapefile).
 3. Compute spatial intersection statistics with `intershp` to analyze spatial relationships between Shapefiles, with support for merge mode and grouped statistics.
 
+## Example
+
+The following examples demonstrate common usage patterns:
+
+- Validate and clean Shapefiles
+  ```stata
+  checkshp "fujian.shp", detail clean
+  ```
+
+- Reproject Shapefiles using different methods
+  ```stata
+  * Using EPSG code
+  reprojshp "fujian.shp", crs(EPSG:4326)
+  ```
+
+- Calculate spatial intersection statistics
+  ```stata
+  * Basic intersection calculation
+  intershp "fujian.shp" with("fuzhou_building.shp")
+  
+  * Intersection with grouped statistics
+  intershp "fujian.shp" with("fuzhou_building.shp"), group(Floor)
+  ```
+
 ## Runtime Environment
 
 - **JDK**: 17 or higher
