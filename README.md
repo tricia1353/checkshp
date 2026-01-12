@@ -1,7 +1,13 @@
-# gcheckshp
+# checkshp
 
 A Java tool based on GeoTools and JTS for geometric validation, cleaning, reprojection, and spatial intersection statistical analysis of Shapefiles.
 
+## Installation
+
+```stata
+net install checkshp, from("https://raw.githubusercontent.com/tricia1353/checkshp/main/") replace
+```
+ 
 ## Features
 
 ### 1. Geometric Validation Mode (Check Mode)
@@ -31,6 +37,25 @@ A Java tool based on GeoTools and JTS for geometric validation, cleaning, reproj
   - Uses STRtree spatial index (recommended node capacity: 100) to accelerate large-scale data calculations
   - Envelope pre-check: Checks bounding box intersections first to avoid unnecessary geometric calculations
   - Stream processing: Prevents memory overflow, suitable for processing millions of features
+
+## Command Overview
+
+The toolkit exposes three commands that follow the workflow described above:
+
+- **Geometric validation**
+  - `checkshp` validates geometric validity of Shapefiles, detects invalid features, and optionally removes invalid features to generate cleaned Shapefiles with `_clean` suffix
+- **Reprojection**
+  - `reprojshp` reprojects Shapefiles to a specified coordinate reference system (CRS) using EPSG codes, GeoTIFF files, or reference Shapefiles, and generates new files with `_reproj` suffix
+- **Spatial intersection statistics**
+  - `intershp` computes spatial intersection areas and counts between two Shapefiles, with support for merge mode and grouped statistics by specified fields
+
+## Workflow Snapshot
+
+The following workflow demonstrates how the commands work together:
+
+1. Validate and clean Shapefiles with `checkshp` to detect and optionally remove invalid geometric features before spatial operations.
+2. Reproject Shapefiles to a common coordinate system using `reprojshp` when necessary, using EPSG codes or reference files (GeoTIFF or Shapefile).
+3. Compute spatial intersection statistics with `intershp` to analyze spatial relationships between Shapefiles, with support for merge mode and grouped statistics.
 
 ## Runtime Environment
 
