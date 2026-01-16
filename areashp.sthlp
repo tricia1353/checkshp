@@ -16,6 +16,7 @@
 {synopthdr:options}
 {synoptline}
 {synopt :{opt s:ave(filename)}}Specify output CSV file path (default: {it:shpfile}_area.csv){p_end}
+{synopt :{opt crs(string)}}Specify coordinate reference system (required). Can be EPSG code (e.g., EPSG:3857 or 3857), TIF file path, or SHP file path{p_end}
 {synoptline}
 
 
@@ -25,11 +26,12 @@
 {cmd:areashp} calculates the area of all polygon and multipolygon features in a shapefile. The results are saved to a CSV file containing all original attribute fields plus an "Area" column.
 
 {pstd}
-{bf:Important:} Area calculation requires a projected coordinate system for accuracy. The command automatically handles coordinate reference systems (CRS):
+{bf:Important:} Area calculation requires a projected coordinate system for accuracy. The {cmd:crs()} option is required and allows you to specify the coordinate system:
 {p_end}
-{phang2}• If the shapefile uses a geographic CRS (e.g., WGS84), it {bf:automatically converts} to an appropriate UTM projection based on the center of the shapefile for accurate area calculation{p_end}
-{phang2}• If the shapefile uses a projected CRS, it calculates areas directly in that coordinate system{p_end}
-{phang2}• If the shapefile is missing CRS information, the command attempts to infer whether coordinates are geographic (based on coordinate ranges) and converts to UTM if needed{p_end}
+{phang2}• EPSG code: {cmd:crs(EPSG:3857)} or {cmd:crs(3857)}{p_end}
+{phang2}• Reference TIF file: {cmd:crs(reference.tif)} - reads CRS from GeoTIFF file{p_end}
+{phang2}• Reference SHP file: {cmd:crs(reference.shp)} - reads CRS from Shapefile{p_end}
+{phang2}• The command projects the shapefile to the specified coordinate system for accurate area calculation{p_end}
 {phang2}• The area unit is automatically determined from the CRS (typically square meters for projected systems){p_end}
 
 {pstd}
@@ -48,16 +50,11 @@ The output CSV file contains all original attribute fields from the shapefile, p
 {title:Examples}
 
 {phang}
-Calculate polygon areas (output to default CSV file):
-
-{p 12 16 2}
-{cmd:. areashp "fujian.shp"}{break}
-
-{phang}
 Calculate polygon areas and save to a specific file:
 
 {p 12 16 2}
-{cmd:. areashp "fujian.shp", save("fujian_areas.csv")}{break}
+{cmd:. areashp "fujian.shp", save("fujian_areas.csv") crs(EPSG:3857)}{break}
+
 
 
 {title:Requirements}
@@ -72,7 +69,7 @@ Calculate polygon areas and save to a specific file:
 {title:Technical Details}
 
 {pstd}
-The command uses GeoTools and JTS (Java Topology Suite) libraries to read shapefiles and calculate polygon areas. For geographic coordinate systems, it automatically selects an appropriate UTM zone based on the center of the shapefile's extent to ensure accurate area calculations. The area calculation uses the JTS geometry area method, which handles both simple polygons and multipolygons correctly.
+The command uses GeoTools and JTS (Java Topology Suite) libraries to read shapefiles and calculate polygon areas. The {cmd:crs()} option is required and specifies the coordinate reference system to use. The command projects the shapefile to the specified coordinate system for accurate area calculations. The area calculation uses the JTS geometry area method, which handles both simple polygons and multipolygons correctly.
 
 
 {title:Author}

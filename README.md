@@ -20,30 +20,36 @@ net install checkshp, from("https://raw.githubusercontent.com/tricia1353/checksh
 - **Flexible Input Format**:
   - EPSG codes: `EPSG:4326` or numeric code `4326` (automatically adds EPSG: prefix)
   - GeoTIFF file path: Automatically reads coordinate system from .tif/.tiff files (uses `getCoordinateReferenceSystem()` method without reading complete image data)
-  - **Output**: Generates new files with `_reproj` suffix while preserving original files
+- **Output**: Generates new files with `_reproj` suffix while preserving original files
 
 ### 3. Polygon Area Calculation Mode (Area Mode)
 - **Area Calculation**: Calculates the area of all polygon and multipolygon features in a Shapefile
-- **Automatic Coordinate System Conversion**:
-  - **Critical**: Area calculation requires a projected coordinate system for accuracy
-  - Automatically detects geographic coordinate systems (e.g., WGS84) and converts to appropriate UTM projection based on the center of the Shapefile
-  - If Shapefile uses a projected CRS, calculates areas directly in that coordinate system
+- **Flexible Coordinate System Handling**:
+  - **Critical**: Area calculation requires a projected coordinate system for accuracy. Optional `crs()` option allows you to specify:
+    - EPSG codes: `EPSG:3857`
+    - Reference TIF file: path to a GeoTIFF file
+    - Reference SHP file: path to a Shapefile
+
 
 ### 4. Spatial Intersection Statistics Mode (Intersection Mode)
 - **Intersection Calculation**: Computes spatial intersection areas and counts between two Shapefiles
-- **Smart Coordinate System Handling**:
-  - Automatically detects geographic coordinate systems (e.g., WGS84) and converts to appropriate UTM projected coordinate systems for area calculation
+- **Coordinate Reference System** (Required):
+  - The `crs()` option is required and supports multiple formats:
+    - EPSG codes: `crs(EPSG:3857)` or `crs(3857)`
+    - Reference TIF file: `crs(reference.tif)` - reads CRS from GeoTIFF file
+    - Reference SHP file: `crs(reference.shp)` - reads CRS from Shapefile
   - Automatically handles coordinate transformations between different coordinate systems
   - Automatically determines area units (square meters, square degrees, etc.) based on coordinate system
-  - UTM zone selection is based on the center point of both Shapefiles' boundaries
+  
 - **Flexible Calculation Modes**:
-  - **Standard Mode** (default): Uses STRtree spatial index to compute intersections feature by feature, suitable for large-scale data
-  - **Merge Mode** : Merges all features of shp2 before computing intersections, enabling deduplication of shp2 features
+  - **Standard Mode** (default): Uses STRtree spatial index to compute intersections feature by feature.
+  - **Merge Mode**: Detects and merges overlapping features of shp2 before computing intersections, which enables efficient deduplication.
 - **Grouped Statistics**: Supports grouped statistics by specified field of shp2
 - **Performance Optimization**:
   - Uses STRtree spatial index (recommended node capacity: 100) to accelerate large-scale data calculations
   - Envelope pre-check: Checks bounding box intersections first to avoid unnecessary geometric calculations
   - Stream processing: Prevents memory overflow, suitable for processing millions of features
+  - Clip option: Reduces data range before processing, especially useful when dealing with global data
 
 ## Command Overview
 
@@ -55,10 +61,10 @@ The toolkit exposes four commands that follow the workflow described above:
   - `reprojshp` reprojects Shapefiles to a specified coordinate reference system (CRS) using EPSG codes, GeoTIFF files, or reference Shapefiles, and generates new files with `_reproj` suffix
 
 - **Polygon area calculation**
-  - `areashp` calculates the area of all polygon and multipolygon features in a Shapefile, automatically converting geographic coordinate systems to projected coordinate systems for accurate area calculation, and outputs results to a CSV file
+  - `areashp` calculates the area of all polygon and multipolygon features in a Shapefile and outputs results to a CSV file. 
   
 - **Spatial intersection statistics**
-  - `intershp` computes spatial intersection areas and counts between two Shapefiles, with support for merge mode and grouped statistics by specified fields
+  - `intershp` computes spatial intersection areas and counts between two Shapefiles. The `crs()` option is required. Supports merge mode (deduplication of overlapping features), automatic clipping, and grouped statistics by specified fields.
 
 ## Workflow Snapshot
 
@@ -66,8 +72,8 @@ The following workflow demonstrates how the commands work together:
 
 1. Validate and clean Shapefiles with `checkshp` to detect and optionally remove invalid geometric features before spatial operations.
 2. Reproject Shapefiles to a common coordinate system using `reprojshp` when necessary, using EPSG codes or reference files (GeoTIFF or Shapefile).
-3. Calculate polygon areas with `areashp` to compute accurate area measurements for polygon features, with automatic coordinate system conversion for geographic CRS.
-4. Compute spatial intersection statistics with `intershp` to analyze spatial relationships between Shapefiles, with support for merge mode and grouped statistics.
+3. Calculate polygon areas with `areashp` to compute accurate area measurements for polygon features. Optionally specify projection using `crs()` option.
+4. Compute spatial intersection statistics with `intershp` to analyze spatial relationships between Shapefiles. The `crs()` option is required. Supports merge mode (deduplication of overlapping features), automatic clipping, and grouped statistics.
 
 
 ## Example
@@ -87,17 +93,19 @@ The following examples demonstrate common usage patterns:
 
 - Calculate spatial intersection statistics
   ```stata
-  * Basic intersection calculation
-  intershp "fujian.shp" with("fuzhou_building.shp")
-  
+  * Basic intersection calculation (crs is required)
+  intershp "fujian.shp" with("fuzhou_building.shp"), crs(EPSG:3857)
+    
   * Intersection with grouped statistics
-  intershp "fujian.shp" with("fuzhou_building.shp"), group(Floor)
+  intershp "fujian.shp" with("fuzhou_building.shp"), crs(EPSG:3857) group(Floor)
+  
   ```
 
 - Calculate polygon areas
   ```stata
-  * Calculate areas (output to default CSV file: fujian_area.csv)
-  areashp "fujian.shp"
+  * Calculate areas with specified projection
+  areashp "fujian.shp", projection(EPSG:3857)
+  
   ```
 
 ## Runtime Environment

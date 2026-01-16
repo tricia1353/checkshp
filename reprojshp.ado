@@ -33,30 +33,15 @@ program define reprojshp
     }
     
     * 自动查找 JAR 文件路径
-    * 尝试在多个可能的位置查找 JAR 文件
-    local jar_path `"`c(pwd)'/checkshp-0.1.0.jar"'
-    local jar_path : subinstr local jar_path "\" "/", all
-    capture confirm file `"`jar_path'"'
+    * 使用 findfile 在 Stata 搜索路径中查找 JAR 文件
+    capture findfile checkshp-0.1.0.jar
     if _rc {
-        * 尝试当前目录下的 build/libs 目录
-        local jar_path `"`c(pwd)'/build/libs/checkshp-0.1.0.jar"'
-        local jar_path : subinstr local jar_path "\" "/", all
-        capture confirm file `"`jar_path'"'
-        if _rc {
-            * 尝试在 ado 目录下查找（如果 ado 文件安装在 Stata 的 ado 目录中）
-            local ado_dir : sysdir PLUS
-            local jar_path `"`ado_dir'c/checkshp-0.1.0.jar"'
-            local jar_path : subinstr local jar_path "\" "/", all
-            capture confirm file `"`jar_path'"'
-            if _rc {
-                display as error "JAR file not found. Searched in:"
-                display as error `"  `c(pwd)'/checkshp-0.1.0.jar"'
-                display as error `"  `c(pwd)'/build/libs/checkshp-0.1.0.jar"'
-                display as error `"  `ado_dir'c/checkshp-0.1.0.jar"'
-                exit 601
-            }
-        }
+        display as error "JAR file not found: checkshp-0.1.0.jar"
+        display as error "Please ensure the JAR file is in your Stata search path."
+        exit 601
     }
+    local jar_path `"`r(fn)'"'
+    local jar_path : subinstr local jar_path "\" "/", all
     
     * 处理重投影模式
     if `"`crs'"' == "" {
