@@ -1,6 +1,6 @@
 cd "D:\checkshp\checkshp"
 
-local shp `"fujian.shp"'
+local shp `"fuzhou.shp"'
 local shp2 `"fuzhou_building.shp"' 
 local tif_file `"DMSP-like2020.tif"'
 
