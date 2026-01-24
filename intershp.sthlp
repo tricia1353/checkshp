@@ -35,7 +35,7 @@ Note: {cmd:with()} is required and must be specified before the comma. {cmd:crs(
 Calculate intersection statistics grouped by a field:
 
 {p 12 16 2}
-{cmd:. intershp "fujian.shp" with("fuzhou_building.shp"), crs(EPSG:3857) group("Floor")}{break}
+{cmd:. intershp "fuzhou.shp" with("fuzhou_building.shp"), crs(EPSG:3857) group("Floor")}{break}
 
 
 {title:Requirements}

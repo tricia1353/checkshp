@@ -1,7 +1,7 @@
 
 cap program drop checkshp
 program define checkshp
-    version 16
+version 18
     
     syntax anything [, Detail Summary Clean]
     

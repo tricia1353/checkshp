@@ -39,13 +39,13 @@ The command checks for common geometric errors such as self-intersections, dupli
 Check shapefile with summary output (default):
 
 {p 12 16 2}
-{cmd:. checkshp "fujian.shp"}{break}
+{cmd:. checkshp "fuzhou.shp"}{break}
 
 {phang}
 Check and clean invalid features:
 
 {p 12 16 2}
-{cmd:. checkshp "fujian.shp", detail clean}{break}
+{cmd:. checkshp "fuzhou.shp", detail clean}{break}
 
 
 {title:Requirements}

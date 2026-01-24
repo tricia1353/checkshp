@@ -37,13 +37,13 @@ The reprojected shapefile is saved as a new file ({it:shpfile}_reproj.shp), pres
 Reproject shapefile to WGS84 (EPSG:4326):
 
 {p 12 16 2}
-{cmd:. reprojshp "fujian.shp", crs(EPSG:4326)}{break}
+{cmd:. reprojshp "fuzhou.shp", crs(EPSG:4326)}{break}
 
 {phang}
 Reproject shapefile using GeoTIFF file as reference:
 
 {p 12 16 2}
-{cmd:. reprojshp "fujian.shp", crs("DMSP-like2020.tif")}{break}
+{cmd:. reprojshp "fuzhou.shp", crs("DMSP-like2020.tif")}{break}
 
 
 {title:Requirements}

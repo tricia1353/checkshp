@@ -53,7 +53,7 @@ The output CSV file contains all original attribute fields from the shapefile, p
 Calculate polygon areas and save to a specific file:
 
 {p 12 16 2}
-{cmd:. areashp "fujian.shp", save("fujian_areas.csv") crs(EPSG:3857)}{break}
+{cmd:. areashp "fuzhou.shp", save("fujian_areas.csv") crs(EPSG:3857)}{break}
 
 
 

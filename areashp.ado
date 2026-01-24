@@ -1,6 +1,6 @@
 cap program drop areashp
 program define areashp
-    version 16
+version 18
     
     syntax anything [, SAVE(string) CRS(string)]
     

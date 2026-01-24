@@ -1,6 +1,6 @@
 cap program drop intershp
 program define intershp
-    version 16
+version 18
     
     syntax anything(name=args) [, MERGE GROUP(string) CRS(string)]
     
