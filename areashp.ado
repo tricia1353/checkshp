@@ -6,7 +6,11 @@ version 18
     
     * 解析并处理主文件路径
     local shpfile `anything'
-    normalize_path, file(`"`shpfile'"')
+    capture normalize_path, file(`"`shpfile'"')
+    if _rc {
+        display as error "shapefile path is required."
+        exit 198
+    }
     local shpfile `"`r(filepath)'"'
     capture confirm file `"`shpfile'"'
     if _rc {
@@ -46,7 +50,11 @@ version 18
     * 处理输出CSV文件路径（如果指定）
     local output_csv ""
     if "`save'" != "" {
-        normalize_path, file(`"`save'"')
+        capture normalize_path, file(`"`save'"')
+        if _rc {
+            display as error "Option save() requires a valid output file path."
+            exit 198
+        }
         local output_csv `"`r(filepath)'"'
     }
     
@@ -73,7 +81,11 @@ version 18
     * 如果不是 EPSG 代码，则视为文件路径，进行规范化处理
     if !`is_epsg' {
         local crs_file `crs_param'
-        normalize_path, file(`"`crs_file'"')
+        capture normalize_path, file(`"`crs_file'"')
+        if _rc {
+            display as error "Option crs() requires a valid EPSG code or file path."
+            exit 198
+        }
         local crs_param `"`r(filepath)'"'
         * 检查文件是否存在
         capture confirm file `"`crs_param'"'
