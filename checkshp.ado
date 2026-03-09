@@ -4,10 +4,14 @@ program define checkshp
 version 18
     
     syntax anything [, Detail Summary Clean]
-    
+
     * 解析并处理主文件路径（参考 gtiffdisp.ado 的方式）
     local shpfile `anything'
-    normalize_path, file(`"`shpfile'"')
+    capture normalize_path, file(`"`shpfile'"')
+    if _rc {
+        display as error "shapefile path is required."
+        exit 198
+    }
     local shpfile `"`r(filepath)'"'
     capture confirm file `"`shpfile'"'
     if _rc {
