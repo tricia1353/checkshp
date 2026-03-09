@@ -44,7 +44,11 @@ version 18
     
     * 解析并处理主文件路径（参考 gtiffdisp.ado 的方式）
     local shpfile = trim(`"`shpfile'"')
-    normalize_path, file(`"`shpfile'"')
+    capture normalize_path, file(`"`shpfile'"')
+    if _rc {
+        display as error "shapefile path is required."
+        exit 198
+    }
     local shpfile `"`r(filepath)'"'
     capture confirm file `"`shpfile'"'
     if _rc {
@@ -82,7 +86,11 @@ version 18
     local jar_path : subinstr local jar_path "\" "/", all
     
     * 处理相交模式
-    normalize_path, file(`"`with_file'"')
+    capture normalize_path, file(`"`with_file'"')
+    if _rc {
+        display as error "with() requires a valid shapefile path."
+        exit 198
+    }
     local with_file `"`r(filepath)'"'
     capture confirm file `"`with_file'"'
     if _rc {
@@ -117,7 +125,11 @@ version 18
     * 如果不是 EPSG 代码，则视为文件路径，进行规范化处理
     if !`is_epsg' {
         local crs_file `crs_param'
-        normalize_path, file(`"`crs_file'"')
+        capture normalize_path, file(`"`crs_file'"')
+        if _rc {
+            display as error "Option crs() requires a valid EPSG code or file path."
+            exit 198
+        }
         local crs_param `"`r(filepath)'"'
         * 检查文件是否存在
         capture confirm file `"`crs_param'"'
